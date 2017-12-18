@@ -65,19 +65,19 @@ validation_size = .16
 # how long to wait after validation loss stops improving before terminating training
 early_stopping = None  # use None if you don't want to implement early stoping
 
-train_path = 'plants/train/'
-test_path = 'plants/test/'
+train_path = 'data/train/'
+test_path = 'data/test/'
 checkpoint_dir = "models/"
 
 #train, valid = data_processing.read_train_sets(train_path, img_size, classes, validation_size=validation_size)
-#pickle.dump(train, open("plants/train.p", "wb"))
-#pickle.dump(valid, open("plants/valid.p", "wb"))
-train = pickle.load(open("plants/train.p", "rb"))
-valid = pickle.load(open("plants/valid.p", "rb"))
+#pickle.dump(train, open("data/train.p", "wb"))
+#pickle.dump(valid, open("data/valid.p", "wb"))
+train = pickle.load(open("data/train.p", "rb"))
+valid = pickle.load(open("data/valid.p", "rb"))
 
 #test = data_processing.read_test_set(test_path, img_size, classes)
-#pickle.dump(test, open("plants/test.p", "wb"))
-test = pickle.load(open("plants/test.p", "rb"))
+#pickle.dump(test, open("data/test.p", "wb"))
+test = pickle.load(open("data/test.p", "rb"))
 
 
 print("Size of:")
@@ -289,8 +289,8 @@ saver = tf.train.Saver(max_to_keep=10)
 session = tf.InteractiveSession()
 
 #session.run(tf.global_variables_initializer())
-new_saver = tf.train.import_meta_graph('plants/cnn.meta')
-new_saver.restore(session, tf.train.latest_checkpoint('plants/'))
+new_saver = tf.train.import_meta_graph('data/cnn.meta')
+new_saver.restore(session, tf.train.latest_checkpoint('data/'))
 
 train_batch_size = batch_size
 
@@ -343,7 +343,7 @@ def optimize(num_iterations):
 
         # Print status at end of each epoch (defined as full pass through training dataset).
         if i % int(train.num_examples / batch_size) == 0:
-            saver.save(session, 'plants/cnn')
+            saver.save(session, 'data/cnn')
             val_loss = session.run(cost, feed_dict=feed_dict_validate)
             epoch = int(i / int(train.num_examples / batch_size))
 
