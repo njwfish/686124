@@ -2,6 +2,7 @@ import os
 import glob
 import numpy as np
 import cv2
+import pickle
 from sklearn.utils import shuffle
 
 
@@ -104,7 +105,11 @@ class DataSet(object):
         return self._images[start:end], self._labels[start:end], self._ids[start:end], self._cls[start:end]
 
 
-def read_train_sets(train_path, image_size, classes, validation_size=0):
+def read_train_sets(train_path, image_size, classes, validation_size=0, state_dir='', from_file_if_saved=True):
+    if from_file_if_saved and state_dir != '':
+        if os.path.isfile(state_dir + "train.p") and os.path.isfile(state_dir + "valid.p"):
+            return pickle.load(open(state_dir + "train.p", "rb")), pickle.load(open(state_dir + "valid.p", "rb"))
+
     images, labels, ids, cls = load_images(train_path, image_size, classes)
     images, labels, ids, cls = shuffle(images, labels, ids, cls)  # shuffle the data
 
@@ -124,9 +129,19 @@ def read_train_sets(train_path, image_size, classes, validation_size=0):
     train = DataSet(train_images, train_labels, train_ids, train_cls)
     valid = DataSet(validation_images, validation_labels, validation_ids, validation_cls)
 
+    if state_dir != '':
+        pickle.dump(train, open(state_dir + "train.p", "wb"))
+        pickle.dump(valid, open(state_dir + "valid.p", "wb"))
+
     return train, valid
 
 
-def read_test_set(test_path, image_size, classes):
+def read_test_set(test_path, image_size, classes, state_dir='', from_file_if_saved=True):
+    if from_file_if_saved and state_dir != '':
+        if os.path.isfile(state_dir + "test.p"):
+            return pickle.load(open(state_dir + "test.p", "rb"))
     images, labels, ids, cls = load_images(test_path, image_size, classes)
-    return DataSet(images, labels, ids, cls)
+    test = DataSet(images, labels, ids, cls)
+    if state_dir != '':
+        pickle.dump(test, open(state_dir + "test.p", "wb"))
+    return test
