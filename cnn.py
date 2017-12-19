@@ -1,13 +1,10 @@
 import time
-import math
 import random
 
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-import data_processing as dp
-import cv2
+import data_management as dm
 
 from sklearn.metrics import confusion_matrix
 from datetime import timedelta
@@ -40,20 +37,10 @@ img_size_flat = img_size * img_size * num_channels
 img_shape = (img_size, img_size)
 
 # class info
-classes = ['Swamp Milkweed', 'Common Milkweed', 'Yellow Wild', 'Partridge Pea', 'Showy Tick', 'Common Boneset',
-           'Joe-Pye Weed', 'Sunflower', 'Round-head Bush-Clover', 'Dense Blazing-star', 'Shaggy Blazing-star',
-           'Great Blue', 'Wild Blue', 'Wild Bergamot', 'Spotted Horsemint', 'Beardtongue', 'Bigleaf Mountain Mint',
-           'Common Mountain Mint', 'Black-Eyed Susan', 'Coneflower', 'Canada Goldenrod', 'Early Goldenrod',
-           'New England Aster', 'Hairy Heath Aster', 'Spiderworts', 'Blue Vervain', 'New York Ironweed',
-           'Golden Alexanders', 'Big Bluestem', 'Switch Grass', 'Little Bluestem', 'Indian Grass', 'Eastern Gamagrass',
-           'Canada Wild-rye', 'Virginia Wild-rye', 'Red Maple', 'Black Cherry', 'Allegheny Serviceberry', 'Buttonbush',
-           'Winterberry Holly', 'Pawpaw', 'Virginia Sweetspire', 'Flowering dogwood', 'Silky dogwood', 'Redbud',
-           'Mountain Laurel', 'Witchhazel', 'Spicebush', 'Arrowwood viburnum', 'Blackhaw viburnum',
-           'Highbush Blueberry', 'Bush Honeysuckles', 'Butterfly Bush', 'Lesser Celandine', 'Porcelainberry',
-           'Bradford Pear', 'Oriental Bittersweet', 'Beefsteak Plant', 'Japanese Barberry', 'Wisteria',
-           'Chocolate Vine', 'Periwinkle', 'Common Daylily', 'Spanish Bluebells', 'Winged Burning Bush', 'Norway Maple',
-           'Wintercreeper', 'Chinese Silvergrass', 'Doublefile Viburnum', 'Italian Arum', 'Jetbead',
-           'Leatherleaf Mahonia', 'Heavenly Bamboo']
+with open('data/classes.txt') as f:
+    content = f.readlines()
+classes = [x.strip().lower() for x in content]
+
 num_classes = len(classes)
 
 # batch size
@@ -67,14 +54,13 @@ early_stopping = None  # use None if you don't want to implement early stoping
 
 total_iterations = 0
 
-train_path = 'data/train/'
-test_path = 'data/test/'
-state_dir = "data/"
+state_dir = 'data/'
 
-train, valid = dp.read_train_sets(train_path, img_size, classes, validation_size=validation_size, state_dir=state_dir)
-test = dp.read_test_set(test_path, img_size, classes, state_dir=state_dir)
+ids = dm.ImageDataSet(state_dir, img_size, classes, validation_size)
 
 
+train, valid = ids.read_train_sets()
+test = ids.read_test_set()
 
 print("Size of:")
 print("- Training-set:\t\t{}".format(len(train.labels)))
@@ -142,7 +128,7 @@ class CNN():
         self.saver = tf.train.Saver(max_to_keep=10)
         self.session = tf.InteractiveSession()
 
-        # session.run(tf.global_variables_initializer())
+        #self.session.run(tf.global_variables_initializer())
         self.new_saver = tf.train.import_meta_graph(state_dir + 'cnn.meta')
         self.new_saver.restore(self.session, tf.train.latest_checkpoint(state_dir))
 
@@ -343,6 +329,7 @@ class CNN():
                 epoch = int(i / int(train.num_examples / batch_size))
 
                 self.print_progress(epoch, feed_dict_train, feed_dict_validate, val_loss)
+                cnn.print_test_accuracy()
 
                 if early_stopping:
                     if val_loss < best_val_loss:
@@ -420,7 +407,7 @@ class CNN():
         # in a single Notebook cell.
         plt.show()
 
-    def print_validation_accuracy(self,
+    def print_test_accuracy(self,
                                   show_example_errors=False,
                                   show_confusion_matrix=False):
         # Number of images in the test-set.
@@ -442,11 +429,10 @@ class CNN():
             j = min(i + batch_size, num_test)
 
             # Get the images from the test-set between index i and j.
-            to_size = valid.images[i:j, :].length() / img_size_flat
-            images = valid.images[i:j, :].reshape(to_size, img_size_flat)
+            images = test.images[i:j, :].reshape(len(test.images[i:j, :]), img_size_flat)
 
             # Get the associated labels.
-            labels = valid.labels[i:j, :]
+            labels = test.labels[i:j, :]
 
             # Create a feed-dict with these images and labels.
             feed_dict = {self.x: images,
@@ -487,8 +473,6 @@ class CNN():
             print("Confusion Matrix:")
             self.plot_confusion_matrix(cls_pred=cls_pred)
 
-cnn=CNN()
+cnn = CNN()
 
-cnn.optimize(num_iterations=1000)
-
-#print_validation_accuracy()
+cnn.optimize(num_iterations=5000)
