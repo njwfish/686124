@@ -44,10 +44,10 @@ classes = [x.strip().lower() for x in content]
 num_classes = len(classes)
 
 # batch size
-batch_size = 28
+batch_size = 1000
 
 # validation split
-validation_size = .16
+validation_size = 0.16
 
 # how long to wait after validation loss stops improving before terminating training
 early_stopping = None  # use None if you don't want to implement early stoping
@@ -56,11 +56,10 @@ total_iterations = 0
 
 state_dir = 'data/'
 
-ids = dm.ImageDataSet(state_dir, img_size, classes, validation_size)
+ip = dm.ImageProcessing(state_dir, img_size, classes, validation_size)
 
-
-train, valid = ids.read_train_sets()
-test = ids.read_test_set()
+train, valid = ip.read_train_sets()
+test = ip.read_test_set()
 
 print("Size of:")
 print("- Training-set:\t\t{}".format(len(train.labels)))
@@ -475,4 +474,4 @@ class CNN():
 
 cnn = CNN()
 
-cnn.optimize(num_iterations=5000)
+cnn.optimize(num_iterations=1000)

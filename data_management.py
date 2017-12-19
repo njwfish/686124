@@ -72,11 +72,11 @@ class GoogleImagesDataSet:
             rmtree(dirpath)
 
 
-class ImageDataSet:
+class ImageProcessing:
     def __init__(self, state_dir, image_size, classes, validation_size):
         """Assumes the data is structured from a GoogleImageDataSet, reads and formats images for use in CNN image
            classifacation model. Saves dataset objects after loading to prevent having to load each time.
-        :param data_dir: directory containing test, train
+        :param state_dir: directory containing test, train
         :param classes: list of classes
         """
         self.state_dir = state_dir
