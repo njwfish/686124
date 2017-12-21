@@ -21,8 +21,8 @@ class SeleniumImageSearch:
         """
         # Set header to prevent web scraping blocking
         req = Request(url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) '
-                                                   'AppleWebKit/537.75.14 (KHTML, like Gecko) '
-                                                   'Version/7.0.3 Safari/7046A194A'})
+                                                  'AppleWebKit/537.75.14 (KHTML, like Gecko) '
+                                                  'Version/7.0.3 Safari/7046A194A'})
         # Attempt to downlad url, if fails, move on
         try:
             with urlopen(req) as response, open(download_dir + str(self.i_img) + '.png', 'wb') as out_file:

@@ -8,8 +8,16 @@ import image_search
 import glob
 import numpy as np
 import cv2
-import pickle
 from sklearn.utils import shuffle
+import joblib
+
+
+def get_classes(data_dir):
+    """Uses 'classes.txt' to read list of classes. Each class should be the exact query you want to search Google
+       for, and each class should be on a new line"""
+    with open(data_dir + 'classes.txt') as f:
+        content = f.readlines()
+    return [x.strip().lower() for x in content]
 
 
 class GoogleImagesDataSet:
@@ -26,14 +34,7 @@ class GoogleImagesDataSet:
         self.data_dir = data_dir
         self.examples_per_class = examples_per_class
         self.test_size = test_size
-        self.classes = self.get_classes()
-
-    def get_classes(self):
-        """Uses 'classes.txt' to read list of classes. Each class should be the exact query you want to search Google
-           for, and each class should be on a new line"""
-        with open(self.data_dir + 'classes.txt') as f:
-            content = f.readlines()
-        return [x.strip().lower() for x in content]
+        self.classes = get_classes(self.data_dir)
 
     def gen_dataset(self):
         """Takes a list of classes in a directory, 'classes.txt', and for each class downloads images from Google
@@ -73,7 +74,7 @@ class GoogleImagesDataSet:
 
 
 class ImageProcessing:
-    def __init__(self, state_dir, image_size, classes, validation_size):
+    def __init__(self, state_dir, image_size):
         """Assumes the data is structured from a GoogleImageDataSet, reads and formats images for use in CNN image
            classifacation model. Saves dataset objects after loading to prevent having to load each time.
         :param state_dir: directory containing test, train
@@ -81,47 +82,30 @@ class ImageProcessing:
         """
         self.state_dir = state_dir
         self.image_size = image_size
-        self.classes = classes
-        self.validation_size = validation_size
+        self.classes = get_classes(state_dir)
         self.train_path = self.state_dir + 'train/'
         self.test_path = self.state_dir + 'test/'
 
     def read_train_sets(self, from_file_if_saved=True):
-        if from_file_if_saved and self.state_dir != '':
-            if path.isfile(self.state_dir + "train.p") and path.isfile(self.state_dir + "valid.p"):
-                return pickle.load(open(self.state_dir + "train.p", "rb")), \
-                       pickle.load(open(self.state_dir + "valid.p", "rb"))
-
+        if from_file_if_saved:
+            if path.isfile(self.state_dir + str(self.image_size) + "/train.p"):
+                return joblib.load(self.state_dir + str(self.image_size) + "/train.p")
         images, labels, ids, cls = self.load_images(self.train_path, self.image_size, self.classes)
-        images, labels, ids, cls = shuffle(images, labels, ids, cls)
-
-        validation_size = int(self.validation_size * images.shape[0])
-
-        validation_images = images[:validation_size]
-        validation_labels = labels[:validation_size]
-        validation_ids = ids[:validation_size]
-        validation_cls = cls[:validation_size]
-
-        train_images = images[validation_size:]
-        train_labels = labels[validation_size:]
-        train_ids = ids[validation_size:]
-        train_cls = cls[validation_size:]
-
-        train = DataSet(train_images, train_labels, train_ids, train_cls)
-        valid = DataSet(validation_images, validation_labels, validation_ids, validation_cls)
-
-        pickle.dump(train, open(self.state_dir + "train.p", "wb"))
-        pickle.dump(valid, open(self.state_dir + "valid.p", "wb"))
-
-        return train, valid
+        test = DataSet(images, labels, ids, cls)
+        # Why are we using joblib instead of pickle here? Because pickle has had a bug since Python 3.4 where it cannot
+        # save objects larger than 4 GB on Mac OS. For some reason joblib doesn't have this issue. So yea.
+        joblib.dump(test, self.state_dir + str(self.image_size) + "/train.p", compress=3, protocol=4)
+        return test
 
     def read_test_set(self, from_file_if_saved=True):
         if from_file_if_saved:
-            if path.isfile(self.state_dir + "test.p"):
-                return pickle.load(open(self.state_dir + "test.p", "rb"))
+            if path.isfile(self.state_dir + str(self.image_size) + "/test.p"):
+                return joblib.load(self.state_dir + str(self.image_size) + "/test.p")
         images, labels, ids, cls = self.load_images(self.test_path, self.image_size, self.classes)
         test = DataSet(images, labels, ids, cls)
-        pickle.dump(test, open(self.state_dir + "test.p", "wb"))
+        # Why are we using joblib instead of pickle here? Because pickle has had a bug since Python 3.4 where it cannot
+        # save objects larger than 4 GB on Mac OS. For some reason joblib doesn't have this issue. So yea.
+        joblib.dump(test, self.state_dir + str(self.image_size) + "/test.p", compress=3, protocol=4)
         return test
 
     @staticmethod
@@ -161,7 +145,7 @@ class ImageProcessing:
 
 class DataSet(object):
     def __init__(self, images, labels, ids, cls):
-        self._num_examples = images.shape[0]
+        self._num_examples = images
 
         # Convert shape from [num examples, rows, columns, depth]
         # to [num examples, rows*columns] (assuming depth == 1)
@@ -207,19 +191,11 @@ class DataSet(object):
         self._index_in_epoch += batch_size
 
         if self._index_in_epoch > self._num_examples:
+            assert batch_size <= self._num_examples
             # Finished epoch
             self._epochs_completed += 1
-
-            # # Shuffle the data (maybe)
-            # perm = np.arange(self._num_examples)
-            # np.random.shuffle(perm)
-            # self._images = self._images[perm]
-            # self._labels = self._labels[perm]
-            # Start next epoch
-
-            start = 0
             self._index_in_epoch = batch_size
-            assert batch_size <= self._num_examples
+            start = 0
         end = self._index_in_epoch
 
         return self._images[start:end], self._labels[start:end], self._ids[start:end], self._cls[start:end]
